@@ -51,11 +51,6 @@ namespace SharpDX_Study_001
             Texture2D backBuffer = SharpDX.Direct3D11.Resource.FromSwapChain<Texture2D>(swapChain, 0);
             renderView = new RenderTargetView(device, backBuffer);
 
-        }
-
-        private void Form1_Load(object sender, EventArgs e)
-        {
-
             int[] indices_array = new int[]
            {
                 0,1,2,0,2,3,
@@ -76,10 +71,7 @@ namespace SharpDX_Study_001
             // Ignore all windows events
             var factory = swapChain.GetParent<Factory>();
             factory.MakeWindowAssociation(Handle, WindowAssociationFlags.IgnoreAll);
-            // New RenderTargetView from the backbuffer
-            var backBuffer = Texture2D.FromSwapChain<Texture2D>(swapChain, 0);
-            var renderView = new RenderTargetView(device, backBuffer);
-
+           
             // Create Constant Buffer
             var contantBuffer = new Buffer(device, Utilities.SizeOf<Matrix>(), ResourceUsage.Default, BindFlags.ConstantBuffer, CpuAccessFlags.None, ResourceOptionFlags.None, 0);
             // Compile Vertex and Pixel shaders
@@ -96,6 +88,7 @@ namespace SharpDX_Study_001
                         new InputElement("POSITION", 0, Format.R32G32B32A32_Float, 0, 0),
                         new InputElement("COLOR", 0, Format.R32G32B32A32_Float, 16, 0)
                     });
+
             // Prepare All the stages
 
             context.InputAssembler.InputLayout = layout;
@@ -105,13 +98,22 @@ namespace SharpDX_Study_001
             context.VertexShader.Set(vertexShader);
             context.PixelShader.Set(pixelShader);
 
+            // Prepare All the stages
+            context.Rasterizer.SetViewport(new Viewport(0, 0, ClientSize.Width, ClientSize.Height, 0.0f, 1.0f));
+            context.OutputMerger.SetTargets(renderView);
 
+
+        }
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
             RenderLoop.Run(this, Draw3D);
         }
 
         private void Draw3D()
         {
             context.ClearRenderTargetView(renderView, color);
+            context.Draw(3, 0);
             swapChain.Present(0, 0);
         }
 
