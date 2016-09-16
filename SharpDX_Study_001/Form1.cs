@@ -51,27 +51,32 @@ namespace SharpDX_Study_001
             Texture2D backBuffer = SharpDX.Direct3D11.Resource.FromSwapChain<Texture2D>(swapChain, 0);
             renderView = new RenderTargetView(device, backBuffer);
 
+            // int[] indices_array = new int[]
+            //{
+            //     0,1,2,0,2,3,
+            //     4,6,5,4,7,6,
+            //     8,9,10,8,10,11,
+            //     12,14,13,12,15,14,
+            //     16,18,17,16,19,18,
+            //     20,21,22,20,22,23
+            //};
             int[] indices_array = new int[]
-           {
-                0,1,2,0,2,3,
-                4,6,5,4,7,6,
-                8,9,10,8,10,11,
-                12,14,13,12,15,14,
-                16,18,17,16,19,18,
-                20,21,22,20,22,23
-           };
+            {
+               0,1,2
+            };
             var indices = Buffer.Create(device, BindFlags.IndexBuffer, indices_array);
 
             var vertices = Buffer.Create(device, BindFlags.VertexBuffer, new[]
                                            {
-                                      new Vector4(0.0f, 0.5f, 0.5f, 1.0f), new Vector4(1.0f, 0.0f, 0.0f, 1.0f),
-                                      new Vector4(0.5f, -0.5f, 0.5f, 1.0f), new Vector4(0.0f, 1.0f, 0.0f, 1.0f),
-                                      new Vector4(-0.5f, -0.5f, 0.5f, 1.0f), new Vector4(0.0f, 0.0f, 1.0f, 1.0f)
+                                      new Vector4(0.0f, 1.0f, 0.5f, 1.0f), new Vector4(1.0f, 0.0f, 0.0f, 1.0f),
+                                      new Vector4(0.5f, 0.0f, 0.5f, 1.0f), new Vector4(0.0f, 1.0f, 0.0f, 1.0f),
+                                      new Vector4(-0.5f, 0.0f, 0.5f, 1.0f), new Vector4(0.0f, 0.0f, 1.0f, 1.0f),
+                                      new Vector4(0.0f, -1.0f, 0.4f, 1.0f), new Vector4(1.0f, 0.0f, 0.0f, 1.0f)
                                   });
             // Ignore all windows events
             var factory = swapChain.GetParent<Factory>();
             factory.MakeWindowAssociation(Handle, WindowAssociationFlags.IgnoreAll);
-           
+
             // Create Constant Buffer
             var contantBuffer = new Buffer(device, Utilities.SizeOf<Matrix>(), ResourceUsage.Default, BindFlags.ConstantBuffer, CpuAccessFlags.None, ResourceOptionFlags.None, 0);
             // Compile Vertex and Pixel shaders
@@ -92,8 +97,9 @@ namespace SharpDX_Study_001
             // Prepare All the stages
 
             context.InputAssembler.InputLayout = layout;
-            context.InputAssembler.PrimitiveTopology = PrimitiveTopology.TriangleList;
+            context.InputAssembler.PrimitiveTopology = PrimitiveTopology.TriangleStrip;
             context.InputAssembler.SetVertexBuffers(0, new VertexBufferBinding(vertices, Utilities.SizeOf<Vector4>() * 2, 0));
+            context.InputAssembler.SetIndexBuffer(indices, Format.R32_UInt, 0);
             context.VertexShader.SetConstantBuffer(0, contantBuffer);
             context.VertexShader.Set(vertexShader);
             context.PixelShader.Set(pixelShader);
@@ -113,7 +119,8 @@ namespace SharpDX_Study_001
         private void Draw3D()
         {
             context.ClearRenderTargetView(renderView, color);
-            context.Draw(3, 0);
+            //context.Draw(4, 0);
+            context.DrawIndexed(3, 0, 0);
             swapChain.Present(0, 0);
         }
 
