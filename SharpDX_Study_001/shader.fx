@@ -23,6 +23,11 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 * THE SOFTWARE.
 */
+cbuffer data :register(b0)
+{
+	float4x4 worldViewProj;
+};
+
 struct VS_IN
 {
 	float4 pos : POSITION;
@@ -39,7 +44,7 @@ PS_IN VS( VS_IN input )
 {
 	PS_IN output = (PS_IN)0;
 	
-	output.pos = input.pos;
+	output.pos = mul( worldViewProj,input.pos);
 	output.col = input.col;
 	
 	return output;
