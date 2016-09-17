@@ -26,20 +26,26 @@ namespace SharpDX_Study_001
         static Vector4 ColorGreen = new Vector4(0.0f, 1.0f, 0.0f, 1.0f);
         static Vector4 ColorWhite = new Vector4(1.0f, 1.0f, 1.0f, 1.0f);
         static Vector4 ColorBlack = new Vector4(0.0f, 0.0f, 1.0f, 1.0f);
-        static Vector4 ColorYellow = new Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+        static Vector4 ColorYellow = new Vector4(1.0f, 1.0f, 0.0f, 1.0f);
         static Vector4 ColorCyan = new Vector4(0.0f, 1.0f, 1.0f, 1.0f);
-        
+
         Device device;
         SwapChain swapChain;
         Color4 color;
         DeviceContext context;
         RenderTargetView renderView;
+        Matrix projection;
+        Matrix view;
+        Matrix world;
+
         Matrix WVP;
         Buffer contantBuffer;
+        Camera camera;
         public Form1()
         {
             InitializeComponent();
             initDevice();
+            camera = new Camera();
         }
 
         private void initDevice()
@@ -86,14 +92,14 @@ namespace SharpDX_Study_001
                 //buttom
                 new Vector4(-1.0f, -1.0f, -1.0f, 1.0f), ColorGreen,
                 new Vector4(-1.0f, 1.0f, -1.0f, 1.0f), ColorGreen,
-                new Vector4(1.0f, 1.0f, -1.0f, 1.0f), ColorGreen,
-                new Vector4(1.0f, -1.0f, -1.0f, 1.0f), ColorGreen,
+                new Vector4(1.0f, 1.0f, -1.0f, 1.0f), ColorBlue,
+                new Vector4(1.0f, -1.0f, -1.0f, 1.0f), ColorBlue,
                
                 //top
                 new Vector4(-1.0f, -1.0f, 1.0f, 1.0f), ColorRed,
                 new Vector4(-1.0f, 1.0f, 1.0f, 1.0f), ColorRed,
-                new Vector4(1.0f, 1.0f, 1.0f, 1.0f), ColorRed,
-                new Vector4(1.0f, -1.0f, 1.0f, 1.0f), ColorRed,
+                new Vector4(1.0f, 1.0f, 1.0f, 1.0f), ColorYellow,
+                new Vector4(1.0f, -1.0f, 1.0f, 1.0f), ColorYellow,
             });
             // Ignore all windows events
             var factory = swapChain.GetParent<Factory>();
@@ -117,7 +123,7 @@ namespace SharpDX_Study_001
                     });
 
 
-           
+
 
 
             // Prepare All the stages
@@ -139,18 +145,26 @@ namespace SharpDX_Study_001
 
         private void Form1_Load(object sender, EventArgs e)
         {
+            camera.LookAt(new Vector3(0, 5, 5), new Vector3(), Vector3.UnitZ);
+
+            float ratio = (float)ClientRectangle.Width / (float)ClientRectangle.Height;
+            //projection = Matrix.PerspectiveFovLH(3.14F / 3.0F, ratio, 1, 100);
+            camera.SetLens(3.15f / 3.0f, ratio, 1, 1000);
+            camera.UpdateViewMatrix();
+            world = Matrix.Identity;
             RenderLoop.Run(this, Draw3D);
         }
 
         private void Draw3D()
         {
             context.ClearRenderTargetView(renderView, color);
-            //context.Draw(4, 0);
-            //Set matrices
-            float ratio = (float)ClientRectangle.Width / (float)ClientRectangle.Height;
-            Matrix projection = Matrix.PerspectiveFovLH(3.14F / 3.0F, ratio, 1, 100);
-            Matrix view = Matrix.LookAtLH(new Vector3(0, 5, 5), new Vector3(), Vector3.UnitZ);
-            Matrix world = Matrix.RotationZ(Environment.TickCount / 1000.0F);
+
+            //view = Matrix.LookAtLH(new Vector3(0, 5, 5), new Vector3(), Vector3.UnitZ);
+            camera.UpdateViewMatrix();
+            projection = camera.Proj;
+            view = camera.View;
+            //world = Matrix.RotationZ(Environment.TickCount / 1000.0F);
+            
             WVP = world * view * projection;
             context.UpdateSubresource(ref WVP, contantBuffer);
 
@@ -188,6 +202,48 @@ namespace SharpDX_Study_001
                     color = Color.Black;
                     break;
             }
+        }
+        System.Drawing.Point posLast
+        {
+            get;
+            set;
+        }
+        private void Form1_MouseDown(object sender, MouseEventArgs e)
+        {
+
+            posLast = e.Location;
+            this.MouseMove += Form1_MouseMove;
+
+        }
+
+        private void Form1_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Right)
+            {
+                var deltaX = (e.X - posLast.X) / 100.0f;
+                var deltaY = (e.Y - posLast.Y) / 100.0f;
+                posLast = e.Location;
+                world = world * Matrix.RotationAxis(Vector3.Normalize(camera.Right), -deltaY);
+                world = world * Matrix.RotationAxis(Vector3.Normalize(camera.Up), -deltaX);
+
+                //camera.Pitch(-deltaY);
+                //camera.RotateY(deltaX);
+            }
+            else if (e.Button == MouseButtons.Left)
+            {
+                var deltaX = (e.X - posLast.X) / 100.0f;
+                var deltaY = (e.Y - posLast.Y) / 100.0f;
+                //System.Diagnostics.Debug.WriteLine(string.Format(
+                //    "delta Value: {0}\t{1}", deltaX, deltaY));
+                camera.Strafe(-deltaX);
+                camera.Walk(deltaY);
+                posLast = e.Location;
+            }
+        }
+
+        private void Form1_MouseUp(object sender, MouseEventArgs e)
+        {
+            this.MouseMove -= Form1_MouseMove;
         }
     }
 }
