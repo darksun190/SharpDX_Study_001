@@ -105,6 +105,9 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="HLSL.hlsl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="shader.fx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

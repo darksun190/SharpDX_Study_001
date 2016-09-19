@@ -21,6 +21,7 @@ namespace SharpDX_Study_001
 {
     public partial class Form1 : RenderForm
     {
+        int indices_count;
         static Vector4 ColorBlue = new Vector4(0.0f, 0.0f, 1.0f, 1.0f);
         static Vector4 ColorRed = new Vector4(1.0f, 0.0f, 0.0f, 1.0f);
         static Vector4 ColorGreen = new Vector4(0.0f, 1.0f, 0.0f, 1.0f);
@@ -29,6 +30,12 @@ namespace SharpDX_Study_001
         static Vector4 ColorYellow = new Vector4(1.0f, 1.0f, 0.0f, 1.0f);
         static Vector4 ColorCyan = new Vector4(0.0f, 1.0f, 1.0f, 1.0f);
 
+        struct Data
+        {
+            public Matrix world;
+            public Matrix viewProj;
+            public Vector4 factor;
+        }
         Device device;
         SwapChain swapChain;
         Color4 color;
@@ -67,59 +74,100 @@ namespace SharpDX_Study_001
             Texture2D backBuffer = SharpDX.Direct3D11.Resource.FromSwapChain<Texture2D>(swapChain, 0);
             renderView = new RenderTargetView(device, backBuffer);
 
-            // int[] indices_array = new int[]
-            //{
-            //     0,1,2,0,2,3,
-            //     4,6,5,4,7,6,
-            //     8,9,10,8,10,11,
-            //     12,14,13,12,15,14,
-            //     16,18,17,16,19,18,
-            //     20,21,22,20,22,23
-            //};
             int[] indices_array = new int[]
+           {
+                  2,8,6
+                  ,2,6,0
+           };
+            List<int> indices_list = new List<int>();
+            List<Vector4> vertices_list = new List<Vector4>();
             {
-                0,1,2, 0,2,3,
-                4,5,1, 4,1,0,
-                7,6,5, 7,5,4,
-                3,2,6, 3,6,7,
-                1,5,6, 1,6,2,
-                4,0,3, 4,3,7
-            };
-            var indices = Buffer.Create(device, BindFlags.IndexBuffer, indices_array);
+                //craete a grid
+                float width = 50.0f;
+                float depth = 50.0f;
+                int m = 10;
+                int n = 10;
+                int vertexCount = m * n;
+                int faceCount = (m - 1) * (n - 1) * 2;
 
-            var vertices = Buffer.Create(device, BindFlags.VertexBuffer, new[]
-            {
-                //buttom
-                new Vector4(-1.0f, -1.0f, -1.0f, 1.0f), ColorGreen,
-                new Vector4(-1.0f, 1.0f, -1.0f, 1.0f), ColorGreen,
-                new Vector4(1.0f, 1.0f, -1.0f, 1.0f), ColorBlue,
-                new Vector4(1.0f, -1.0f, -1.0f, 1.0f), ColorBlue,
-               
-                //top
-                new Vector4(-1.0f, -1.0f, 1.0f, 1.0f), ColorRed,
-                new Vector4(-1.0f, 1.0f, 1.0f, 1.0f), ColorRed,
-                new Vector4(1.0f, 1.0f, 1.0f, 1.0f), ColorYellow,
-                new Vector4(1.0f, -1.0f, 1.0f, 1.0f), ColorYellow,
-            });
+                //
+                // Create the vertices.
+                //
+
+                float halfWidth = 0.5f * width;
+                float halfDepth = 0.5f * depth;
+
+                float dx = width / (n - 1);
+                float dz = depth / (m - 1);
+
+                float du = 1.0f / (n - 1);
+                float dv = 1.0f / (m - 1);
+
+                for (int i = 0; i < m; ++i)
+                {
+                    float z = halfDepth - i * dz;
+                    for (int j = 0; j < n; ++j)
+                    {
+                        float x = -halfWidth + j * dx;
+
+                        vertices_list.Add(
+                            new Vector4(x, 0.3f * (z * Convert.ToSingle(Math.Sin(0.1f * x)) + x * Convert.ToSingle(Math.Cos(0.1f * z))), z, 1.0f)
+                            );
+
+                    }
+                }
+                //
+                // Create the indices.
+                //
+
+
+                // Iterate over each quad and compute indices.
+                for (int i = 0; i < m - 1; ++i)
+                {
+                    for (int j = 0; j < n - 1; ++j)
+                    {
+                        indices_list.Add( i * n + j);
+                        indices_list.Add(i * n + j + 1);
+                        indices_list.Add((i + 1) * n + j);
+
+                        indices_list.Add((i + 1) * n + j);
+                        indices_list.Add(i * n + j + 1);
+                        indices_list.Add((i + 1) * n + j + 1);
+
+                    }
+                }
+            }
+            indices_count = indices_list.Count;
+            var vertices = Buffer.Create(device, BindFlags.VertexBuffer, vertices_list.ToArray());
+            var indices = Buffer.Create(device, BindFlags.IndexBuffer, indices_list.ToArray());
+
             // Ignore all windows events
             var factory = swapChain.GetParent<Factory>();
             factory.MakeWindowAssociation(Handle, WindowAssociationFlags.IgnoreAll);
 
             // Create Constant Buffer
-            contantBuffer = new Buffer(device, Utilities.SizeOf<Matrix>(), ResourceUsage.Default, BindFlags.ConstantBuffer, CpuAccessFlags.None, ResourceOptionFlags.None, 0);
+            contantBuffer = new Buffer(device, Utilities.SizeOf<Data>(), ResourceUsage.Default, BindFlags.ConstantBuffer, CpuAccessFlags.None, ResourceOptionFlags.None, 0);
             // Compile Vertex and Pixel shaders
-            var vertexShaderByteCode = ShaderBytecode.CompileFromFile("shader.fx", "VS", "vs_4_0");
+            var vertexShaderByteCode = ShaderBytecode.CompileFromFile("HLSL.hlsl", "VS", "vs_5_0");
             var vertexShader = new VertexShader(device, vertexShaderByteCode);
 
-            var pixelShaderByteCode = ShaderBytecode.CompileFromFile("shader.fx", "PS", "ps_4_0");
+            var pixelShaderByteCode = ShaderBytecode.CompileFromFile("HLSL.hlsl", "PS", "ps_4_0");
             var pixelShader = new PixelShader(device, pixelShaderByteCode);
+
+            var hullShaderByteCode = ShaderBytecode.CompileFromFile("HLSL.hlsl", "HS", "hs_5_0");
+            var HullShader = new HullShader(device, hullShaderByteCode);
+
+            var domainShaderByteCode = ShaderBytecode.CompileFromFile("HLSL.hlsl", "DS", "ds_5_0");
+            var DomainShader = new DomainShader(device, domainShaderByteCode);
+
+            var geometryShaderByteCode = ShaderBytecode.CompileFromFile("HLSL.hlsl", "GS", "gs_5_0");
+            var GeometryShader = new GeometryShader(device, geometryShaderByteCode);
 
             var signature = ShaderSignature.GetInputSignature(vertexShaderByteCode);
             // Layout from VertexShader input signature
             var layout = new InputLayout(device, signature, new[]
                     {
-                        new InputElement("POSITION", 0, Format.R32G32B32A32_Float, 0, 0),
-                        new InputElement("COLOR", 0, Format.R32G32B32A32_Float, 16, 0)
+                        new InputElement("POSITION", 0, Format.R32G32B32A32_Float, 0, 0)
                     });
 
 
@@ -129,15 +177,22 @@ namespace SharpDX_Study_001
             // Prepare All the stages
 
             context.InputAssembler.InputLayout = layout;
-            context.InputAssembler.PrimitiveTopology = PrimitiveTopology.TriangleList;
-            context.InputAssembler.SetVertexBuffers(0, new VertexBufferBinding(vertices, Utilities.SizeOf<Vector4>() * 2, 0));
+            context.InputAssembler.PrimitiveTopology = PrimitiveTopology.PatchListWith3ControlPoints;
+
+            context.InputAssembler.SetVertexBuffers(0, new VertexBufferBinding(vertices, Utilities.SizeOf<Vector4>(), 0));
             context.InputAssembler.SetIndexBuffer(indices, Format.R32_UInt, 0);
             context.VertexShader.SetConstantBuffer(0, contantBuffer);
             context.VertexShader.Set(vertexShader);
             context.PixelShader.Set(pixelShader);
 
+            context.GeometryShader.Set(GeometryShader);
+            context.DomainShader.Set(DomainShader);
+            context.HullShader.Set(HullShader);
             // Prepare All the stages
             context.Rasterizer.SetViewport(new Viewport(0, 0, ClientSize.Width, ClientSize.Height, 0.5f, 1.0f));
+            var rdsc = RasterizerStateDescription.Default();
+            rdsc.FillMode = FillMode.Solid;
+            context.Rasterizer.State = new RasterizerState(device, rdsc);
             context.OutputMerger.SetTargets(renderView);
 
 
@@ -145,7 +200,7 @@ namespace SharpDX_Study_001
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            camera.LookAt(new Vector3(0, 5, 5), new Vector3(), Vector3.UnitZ);
+            camera.LookAt(new Vector3(0, 80, 0), new Vector3(), Vector3.UnitZ);
 
             float ratio = (float)ClientRectangle.Width / (float)ClientRectangle.Height;
             //projection = Matrix.PerspectiveFovLH(3.14F / 3.0F, ratio, 1, 100);
@@ -158,17 +213,24 @@ namespace SharpDX_Study_001
         private void Draw3D()
         {
             context.ClearRenderTargetView(renderView, color);
-
-            //view = Matrix.LookAtLH(new Vector3(0, 5, 5), new Vector3(), Vector3.UnitZ);
             camera.UpdateViewMatrix();
-            projection = camera.Proj;
-            view = camera.View;
-            //world = Matrix.RotationZ(Environment.TickCount / 1000.0F);
-            
-            WVP = world * view * projection;
+
+            var WVP = new Data()
+            {
+                world = world,
+                viewProj = camera.ViewProj,
+                factor = new Vector4(2)
+            };
+
+            context.VertexShader.SetConstantBuffer(0, contantBuffer);
+            context.PixelShader.SetConstantBuffer(0, contantBuffer);
+            context.GeometryShader.SetConstantBuffer(0, contantBuffer);
+            context.HullShader.SetConstantBuffer(0, contantBuffer);
+            context.DomainShader.SetConstantBuffer(0, contantBuffer);
+
             context.UpdateSubresource(ref WVP, contantBuffer);
 
-            context.DrawIndexed(36, 0, 0);
+            context.DrawIndexed(indices_count, 0, 0);
             swapChain.Present(0, 0);
         }
 
